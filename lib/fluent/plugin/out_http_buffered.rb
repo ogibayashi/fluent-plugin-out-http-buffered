@@ -2,6 +2,8 @@ module Fluent
 
   class HttpBufferedOutput < Fluent::BufferedOutput
     Fluent::Plugin.register_output('http_buffered', self)
+    include SetTagKeyMixin
+    include SetTimeKeyMixin
 
     def initialize
       super
@@ -20,6 +22,13 @@ module Fluent
 
     # open timeout for the http call
     config_param :http_open_timeout, :float, :default => 2.0
+
+    # whether 'time' should be sent.
+    config_param :output_include_time, :bool, :default => true
+
+    # whether 'tag' should be sent.
+    config_param :output_include_tag, :bool, :default => true
+
 
     def configure(conf)
       super
@@ -66,7 +75,15 @@ module Fluent
     def write(chunk)
       data = []
       chunk.msgpack_each do |(tag,time,record)|
-        data << [tag, time, record]
+        if (! @output_include_tag ) and (! @output_include_time)
+          data << record
+        else
+          out = []
+          out << tag if @output_include_tag
+          out << time if @output_include_time
+          out << record
+          data << out
+        end
       end
 
       request = create_request(data)

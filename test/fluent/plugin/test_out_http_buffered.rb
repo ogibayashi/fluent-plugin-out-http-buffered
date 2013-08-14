@@ -16,6 +16,16 @@ class HttpBufferedOutputTest < Test::Unit::TestCase
     http_method  invalid_method
   ]
 
+  CONFIG_TAGTIME = %[
+    endpoint_url  http://local.endpoint
+    output_include_time false
+    output_include_tag false
+    include_tag_key true
+    include_time_key true
+    time_format %s
+  ]
+
+
   def create_driver(conf = CONFIG)
     Fluent::Test::BufferedOutputTestDriver.new(Fluent::HttpBufferedOutput).configure(conf)
   end
@@ -91,4 +101,39 @@ class HttpBufferedOutputTest < Test::Unit::TestCase
     verify_rspec
     teardown_rspec
   end
+
+  def test_include_tag_time
+    setup_rspec(self)
+
+    d = create_driver(CONFIG_TAGTIME)
+
+    time = Time.parse("2011-01-02 13:14:15 JST").to_i
+    record1 = {"f1" => 10, "f2" => 20 }
+    record2 = {"f1" => 10, "f2" => 30 }
+    d.emit(record1,time)
+    d.emit(record2,time)
+    http = double("Net::HTTP")
+    http.stub(:finish)
+    http.stub(:start).and_yield(http)
+    http.stub(:request) do |request|
+      record1['tag'] = "test"
+      record1['time'] = time.to_s
+      record2['tag'] = "test"
+      record2['time'] = time.to_s
+      expected = [record1,record2].to_json
+      assert_equal expected, request.body
+      response = OpenStruct.new
+      response.code = "200"
+      response
+    end
+
+    d.instance.instance_eval{ @http = http }
+
+    data = d.run
+
+    verify_rspec
+    teardown_rspec
+  end
+
+
 end
