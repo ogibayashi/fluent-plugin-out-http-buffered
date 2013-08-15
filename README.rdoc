@@ -28,6 +28,15 @@ The plugin was influenced by the standard (http output plugin)[https://github.co
       http_read_timeout 2.2
       #Open timeout in seconds, supports floats
       http_open_timeout 2.34
+      # serializer. 'json' and 'msgpack' are supported
+      serializer msgpack
+      # settings from SetTagKeyMixin and SetTimeKeyMixin
+      include_tag_key true
+      include_time_key true
+      time_format %s
+      # Whether to include tag and time record
+      output_include_tag false
+      output_include_time false
     </match>
 
 == Copyright
