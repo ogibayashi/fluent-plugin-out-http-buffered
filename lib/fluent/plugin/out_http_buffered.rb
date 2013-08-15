@@ -29,6 +29,8 @@ module Fluent
     # whether 'tag' should be sent.
     config_param :output_include_tag, :bool, :default => true
 
+    # serializer of messages.
+    config_param :serializer, :string, :default => 'json'
 
     def configure(conf)
       super
@@ -54,6 +56,11 @@ module Fluent
       @http = Net::HTTP.new(@uri.host, @uri.port)
       @http.read_timeout = @http_read_timeout
       @http.open_timeout = @http_open_timeout
+
+      serializers = ['json','msgpack']
+      unless serializers.include?(@serializer)
+        raise Fluent::ConfigError, "Invalid serializer: #{@serializer}"
+      end
     end
 
     def start
@@ -110,15 +117,32 @@ module Fluent
     end
 
     protected
+
+    def create_request_json(request, data)
+      #Headers
+      request['Content-Type'] = 'application/json'
+      
+      #Body
+      request.body = JSON.dump(data)
+    end
+
+    def create_request_msgpack(request, data)
+      #Headers
+      request['Content-Type'] = 'application/x-msgpack; charset=x-user-defined'
+      
+      #Body
+      request.body = data.to_msgpack
+    end
+
       def create_request(data)
         request= Net::HTTP::Post.new(@uri.request_uri)
 
-        #Headers
-        request['Content-Type'] = 'application/json'
-
-        #Body
-        request.body = JSON.dump(data)
-
+        case @serializer
+        when 'json'
+          create_request_json(request,data)
+        when 'msgpack'
+          create_request_msgpack(request,data)
+        end
         request
       end
   end
