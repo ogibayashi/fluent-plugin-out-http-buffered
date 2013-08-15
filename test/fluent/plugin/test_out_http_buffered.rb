@@ -25,6 +25,12 @@ class HttpBufferedOutputTest < Test::Unit::TestCase
     time_format %s
   ]
 
+  CONFIG_SERIALIZER = %[
+    endpoint_url  http://local.endpoint
+    serializer msgpack
+  ]
+
+
 
   def create_driver(conf = CONFIG)
     Fluent::Test::BufferedOutputTestDriver.new(Fluent::HttpBufferedOutput).configure(conf)
@@ -122,6 +128,36 @@ class HttpBufferedOutputTest < Test::Unit::TestCase
       record2['time'] = time.to_s
       expected = [record1,record2].to_json
       assert_equal expected, request.body
+      response = OpenStruct.new
+      response.code = "200"
+      response
+    end
+
+    d.instance.instance_eval{ @http = http }
+
+    data = d.run
+
+    verify_rspec
+    teardown_rspec
+  end
+
+  def test_serializer
+    setup_rspec(self)
+
+    d = create_driver(CONFIG_SERIALIZER)
+
+    time = Time.parse("2011-01-02 13:14:15 JST").to_i
+    record1 = {"f1" => 10, "f2" => 20 }
+    record2 = {"f1" => 10, "f2" => 30 }
+    d.emit(record1,time)
+    d.emit(record2,time)
+    http = double("Net::HTTP")
+    http.stub(:finish)
+    http.stub(:start).and_yield(http)
+    http.stub(:request) do |request|
+      expected = [[d.tag, time,record1],[d.tag,time,record2]].to_msgpack
+      assert_equal expected, request.body
+      assert_equal 'application/x-msgpack; charset=x-user-defined',request['Content-Type']
       response = OpenStruct.new
       response.code = "200"
       response
