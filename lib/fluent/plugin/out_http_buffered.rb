@@ -107,7 +107,9 @@ module Fluent
 
         if @statuses.include? response.code.to_i
           #Raise an exception so that fluent retries
-          raise "Server returned bad status: #{response.code}"
+          raise "Server returned bad status: #{response.code}. Retry sending later."
+        elsif ! (/^2\d\d$/ =~ response.code )
+          $log.warn "Server returned bad status: #{response.code}. Message was dropped."
         end
       rescue IOError, EOFError, SystemCallError
         # server didn't respond 
