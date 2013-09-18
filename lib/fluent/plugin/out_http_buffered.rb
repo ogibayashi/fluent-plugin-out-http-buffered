@@ -32,6 +32,10 @@ module Fluent
     # serializer of messages.
     config_param :serializer, :string, :default => 'json'
 
+    # Retry in case of connect error.
+    config_param :retry_on_connect_error, :default => false
+
+
     def configure(conf)
       super
 
@@ -107,7 +111,11 @@ module Fluent
         end
       rescue IOError, EOFError, SystemCallError
         # server didn't respond 
-        $log.warn "Net::HTTP.#{request.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
+        if retry_on_connect_error
+          raise "Net::HTTP.#{request.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
+        else
+          $log.warn "Net::HTTP.#{request.method.capitalize} raises exception: #{$!.class}, '#{$!.message}'"
+        end
       ensure
         begin
           @http.finish

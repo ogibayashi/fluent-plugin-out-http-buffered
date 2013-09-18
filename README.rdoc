@@ -37,6 +37,8 @@ The plugin was influenced by the standard (http output plugin)[https://github.co
       # Whether to include tag and time record
       output_include_tag false
       output_include_time false
+      # Retry in case of connect error.(default: false)
+      retry_on_connect_error true
     </match>
 
 == Copyright
