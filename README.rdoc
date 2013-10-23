@@ -39,6 +39,8 @@ The plugin was influenced by the standard (http output plugin)[https://github.co
       output_include_time false
       # Retry in case of connect error.(default: false)
       retry_on_connect_error true
+      # Additional header (default: nil). It might be useful to use this with out_forest to include tag/hostname as header.
+      additional_headers X-custom-header1=foo,X-custom-header2=bar   
     </match>
 
 == Copyright

@@ -35,6 +35,8 @@ module Fluent
     # Retry in case of connect error.
     config_param :retry_on_connect_error, :default => false
 
+    # Addtional HTTP Header
+    config_param :additional_headers, :string, :default=> nil
 
     def configure(conf)
       super
@@ -65,6 +67,12 @@ module Fluent
       unless serializers.include?(@serializer)
         raise Fluent::ConfigError, "Invalid serializer: #{@serializer}"
       end
+
+      # Convert string to Hash (Header name => string)
+      if @additional_headers
+        @additional_headers = Hash[@additional_headers.split(",").map{ |f| f.split("=",2)}]
+      end
+
     end
 
     def start
@@ -144,16 +152,21 @@ module Fluent
       request.body = data.to_msgpack
     end
 
-      def create_request(data)
-        request= Net::HTTP::Post.new(@uri.request_uri)
-
-        case @serializer
-        when 'json'
-          create_request_json(request,data)
-        when 'msgpack'
-          create_request_msgpack(request,data)
-        end
-        request
+    def create_request(data)
+      request= Net::HTTP::Post.new(@uri.request_uri)
+      if @additional_headers 
+        @additional_headers.each{|k,v|
+          request[k] = v
+        }
       end
+
+      case @serializer
+      when 'json'
+        create_request_json(request,data)
+      when 'msgpack'
+        create_request_msgpack(request,data)
+      end
+      request
+    end
   end
 end

@@ -31,6 +31,11 @@ class HttpBufferedOutputTest < Test::Unit::TestCase
   ]
 
 
+  CONFIG_HEADERS = %[
+    endpoint_url  http://local.endpoint
+    additional_headers X-custom-header1=foo,X-custom-header2=bar   
+  ]
+
 
   def create_driver(conf = CONFIG)
     Fluent::Test::BufferedOutputTestDriver.new(Fluent::HttpBufferedOutput).configure(conf)
@@ -171,5 +176,33 @@ class HttpBufferedOutputTest < Test::Unit::TestCase
     teardown_rspec
   end
 
+
+  def test_headers
+    setup_rspec(self)
+
+    d = create_driver(CONFIG_HEADERS)
+    assert_equal 'foo', d.instance.instance_eval{ @additional_headers['X-custom-header1'] }
+    assert_equal 'bar', d.instance.instance_eval{ @additional_headers['X-custom-header2'] }
+
+    d.emit("message")
+    http = double("Net::HTTP")
+    http.stub(:finish)
+    http.stub(:start).and_yield(http)
+    http.stub(:request) do |request|
+      assert(request.body =~ /message/)
+      assert_equal 'foo',request['X-custom-header1']
+      assert_equal 'bar',request['X-custom-header2']
+      response = OpenStruct.new
+      response.code = "200"
+      response
+    end
+
+    d.instance.instance_eval{ @http = http }
+
+    data = d.run
+
+    verify_rspec
+    teardown_rspec
+  end
 
 end
